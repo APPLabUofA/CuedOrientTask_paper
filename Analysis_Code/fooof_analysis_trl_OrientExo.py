@@ -38,17 +38,24 @@ os.chdir("C:\\Users\\ssshe\\Documents\\MathLab\\Analysis\\OrientWheel_Exo")
 set_name = 'byTargets_v3'
 
 # Location of saved data files
-# data_dir = os.path.join(os.getcwd(), 'fooof_trl','fix', set_name) #single trial
+data_dir = os.path.join(os.getcwd(), 'fooof_trl','fix', set_name) #single trial
 # data_dir = os.path.join(os.getcwd(), 'fooof_trl','mid', set_name) #single trial
 # data_dir = os.path.join(os.getcwd(), 'fooof_trl','late', set_name) #single trial
-data_dir = os.path.join(os.getcwd(), 'fooof_trl','post', set_name) #single trial
+# data_dir = os.path.join(os.getcwd(), 'fooof_trl','post', set_name) #single trial
+
+# Location of saved data on external hard drive
+# data_dir = os.path.join('F:MathLab', 'Analysis', 'OrientWheel_Exo', 'fooof_trl', 'fix', set_name) #single trial
+# data_dir = os.path.join('F:MathLab', 'Analysis', 'OrientWheel_Exo', 'fooof_trl', 'mid', set_name) #single trial
+# data_dir = os.path.join('F:MathLab', 'Analysis', 'OrientWheel_Exo', 'fooof_trl', 'late', set_name) #single trial
+# data_dir = os.path.join('F:MathLab', 'Analysis', 'OrientWheel_Exo', 'fooof_trl', 'post', set_name) #single trial
+# F:\MathLab\Analysis\OrientWheel_Exo\fooof_trl\fix
 
 
 # Location to save fooof results
-# save_dir = os.path.join(os.getcwd(), 'fooof_trl','fix', set_name, 'fooof_results') #single trial
+save_dir = os.path.join(os.getcwd(), 'fooof_trl','fix', set_name, 'fooof_results') #single trial
 # save_dir = os.path.join(os.getcwd(), 'fooof_trl','mid', set_name, 'fooof_results') #single trial
 # save_dir = os.path.join(os.getcwd(), 'fooof_trl','late', set_name, 'fooof_results') #single trial
-save_dir = os.path.join(os.getcwd(), 'fooof_trl','post', set_name, 'fooof_results') #single trial
+# save_dir = os.path.join(os.getcwd(), 'fooof_trl','post', set_name, 'fooof_results') #single trial
 
 
 # Load the participant names
@@ -101,6 +108,12 @@ for i, part in enumerate(partlist[:]):
         
                 # Median of spectrogram ("median Welch")
                 freqs, psds = compute_spectrum(sig, fs, method='welch', avg_type='mean', nperseg=sig.shape[0])
+                
+                # Save psds
+                psd_freqs = freqs
+                savenamea = 'spect_old_' + ifile[6:-4] + '.mat'
+                sio.savemat(os.path.join(save_dir, part, ichan, icond, savenamea), 
+                            {'psds' : psds, 'psd_freqs' : psd_freqs})
         
                 # Unpack data from dictionary, and squeeze numpy arrays
                 # freqs = np.squeeze(data['freqs']).astype('float')
@@ -138,20 +151,30 @@ for i, part in enumerate(partlist[:]):
                 savenameb = 'bands_' + ifile[6:-4] + '.mat'
                 sio.savemat(os.path.join(save_dir, part, ichan, icond, savenameb), 
                             {'beta1' : beta1, 'alphas' : alphas, 'thetas' : thetas,
-                             'delta' : delta})
+                              'delta' : delta})
                 
                 # Save out a specific FOOOF measure of interest
-                # spect_flat = fm._spectrum_flat
-                # spect_peakrm = fm._spectrum_peak_rm
-                # spect_freqs = fm.freqs
-                # savenamec = 'spect_new_' + ifile[6:-4] + '.mat'
-                # sio.savemat(os.path.join(save_dir, part, ichan, icond, savenamec), 
-                #             {'spect_flat' : spect_flat, 'spect_peakrm' : spect_peakrm,
-                #              'spect_freqs' : spect_freqs})
+                spect_flat = fm._spectrum_flat
+                spect_peakrm = fm._spectrum_peak_rm
+                spect_freqs = fm.freqs
+                ap_fit = fm._ap_fit
+                peak_fit = fm._peak_fit
+                full_model = fm.fooofed_spectrum_
+                init_spect = fm.power_spectrum
+                savenamec = 'spect_new_' + ifile[6:-4] + '.mat'
+                sio.savemat(os.path.join(save_dir, part, ichan, icond, savenamec), 
+                            {'spect_flat' : spect_flat, 'spect_peakrm' : spect_peakrm,
+                              'spect_freqs' : spect_freqs, 'ap_fit' : ap_fit,
+                              'peak_fit' : peak_fit, 'full_model' : full_model,
+                              'init_spect' : init_spect})
+                
+                
                 
                 # Clear variables
-                del data, freqs, psds, savename, savenameb, ifile, fm, alphas, thetas, beta1, delta,
-                sig
+                del data, freqs, psds, savename, savenamea, savenameb, ifile, fm, alphas, thetas, beta1, delta,
+                sig, psd_freqs, spect_flat, spect_peakrm, spect_freqs, savenamec, ap_fit, peak_fit, full_model, init_spect
+                # del data, freqs, psds, savenamea, ifile, sig, psd_freqs, spect_flat, spect_peakrm, 
+                # spect_freqs, savenamec, ap_fit, peak_fit, full_model, init_spect
             del mat_fname, j 
         del cc, icond
     del ichan, ee
@@ -160,18 +183,23 @@ del i
 
 
 
-# Plot the power spectra
-plot_power_spectra([freqs[:200]],
-                   [psds[:200,0]],
-                   ['Median Welch'])
+
+
+# -----------------------------------------------------------------------------
+# For checking things are working...
+
+# # Plot the power spectra
+# plot_power_spectra([freqs[:200]],
+#                     [psds[:200,0]],
+#                     ['Median Welch'])
 
 
 
-# Find the index of the worst model fit from the group
-worst_fit_ind = np.argmax(fg.get_params('error'))
-# Extract this model fit from the group
-fm = fg.get_fooof(worst_fit_ind, regenerate=True)     
+# # Find the index of the worst model fit from the group
+# worst_fit_ind = np.argmax(fg.get_params('error'))
+# # Extract this model fit from the group
+# fm = fg.get_fooof(worst_fit_ind, regenerate=True)     
 
-# Check results and visualize the extracted model
-fm.plot() 
-fm.print_results()
+# # Check results and visualize the extracted model
+# fm.plot() 
+# fm.print_results()
